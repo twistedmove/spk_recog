@@ -1,3 +1,9 @@
 data/
+conf/
+
 utils
 steps
+
+.gitignore
+nohup.log
+run_test.py

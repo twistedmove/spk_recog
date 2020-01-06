@@ -6,6 +6,8 @@ import shutil
 import sys
 import subprocess
 
+kaldi_root = '../../kaldi'
+sph2pipe = './{0}/tools/sph2pipe_v2.5/sph2pipe'.format(kaldi_root)
 
 if len(sys.argv) != 3:
     raise Exception("Usage: {0} <path-to-LDC2004S07> <path-to-output>".format(os.path.basename(__file__)))
@@ -58,6 +60,9 @@ for i in range(len(line)):
             if not spk1 in s2g_dict:
                 s2g_dict[spk1] = gender1
                 GNDR.write('{0} {1}\n'.format(spk1, gender1))
+            # subprocess.run('{0} -f wav -p -c 1 {1} {2}'.format(
+            #     sph2pipe, wav_dict[wav], wav_dict[wav].replace('.sph', '.wav')), shell=True)
+            # WAV.write('{0} {1}\n'.format(uttid, wav_dict[wav].replace('.sph', '.wav')))
             WAV.write('{0} sph2pipe -f wav -p -c 1 {1} |\n'.format(uttid, wav_dict[wav]))
             SPKR.write('{0} {1}\n'.format(uttid, spk1))
 
@@ -65,6 +70,9 @@ for i in range(len(line)):
             if not spk2 in s2g_dict:
                 s2g_dict[spk2] = gender2
                 GNDR.write('{0} {1}\n'.format(spk2, gender2))
+            # subprocess.run('{0} -f wav -p -c 1 {1} {2}'.format(
+            #     sph2pipe, wav_dict[wav], wav_dict[wav].replace('.sph', '.wav')), shell=True)
+            # WAV.write('{0} {1}\n'.format(uttid, wav_dict[wav].replace('.sph', '.wav')))
             WAV.write('{0} sph2pipe -f wav -p -c 1 {1} |\n'.format(uttid, wav_dict[wav]))
             SPKR.write('{0} {1}\n'.format(uttid, spk2))
         else:
@@ -78,4 +86,5 @@ subprocess.call('utils/utt2spk_to_spk2utt.pl {0}/utt2spk >{0}/spk2utt'.format(ou
 subprocess.call('utils/fix_data_dir.sh {0}'.format(outdir), shell=True)
 subprocess.call('utils/validate_data_dir.sh --no-text --no-feats {0}'.format(outdir), shell=True)
 shutil.rmtree(tmp_dir)
+print(sys.argv[0], 'finished.')
 #
