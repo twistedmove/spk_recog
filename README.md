@@ -1,2 +1,2 @@
 # spk_recog
-Speaker Recognition
+Speaker Recognition with Switchboard Celluar DB
