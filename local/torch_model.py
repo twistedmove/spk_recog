@@ -28,6 +28,16 @@ class StatsPooling(nn.Module):
         return x
 
 
+class SelfAttentionLayer(nn.Module):
+    def __init__(self, laten_dim, num_head, node):
+        super(SelfAttentionLayer, self).__init__()
+        self.W1 = nn.Linear(laten_dim, node)
+        self.W2 = nn.Linear(node, num_head)
+
+    def forward(self, data):
+        return F.softmax(self.W2(F.relu(self.W1)))
+
+
 class Xvector(nn.Module):
     def __init__(self, feat_dim, num_target):
         super(Xvector, self).__init__()
@@ -38,6 +48,39 @@ class Xvector(nn.Module):
         self.TDNN5 = nn.Conv1d(512, 1500, 1, dilation=1)
 
         self.pooling = StatsPooling(2)
+
+        self.layer1 = nn.Linear(3000, 512)
+        self.bnorm1 = nn.BatchNorm1d(512)
+
+        self.layer2 = nn.Linear(512, 512)
+        self.bnorm2 = nn.BatchNorm1d(512)
+
+        self.output = nn.Linear(512, num_target)
+
+    def forward(self, data):
+        x = self.TDNN1(data)
+        x = self.TDNN2(x)
+        x = self.TDNN3(x)
+        x = self.TDNN4(x)
+        x = self.TDNN5(x)
+        x = self.pooling(x)
+        x = self.bnorm1(F.relu(self.layer1(x)))
+        x = self.bnorm2(F.relu(self.layer2(x)))
+        x = self.output(x)
+        return x
+
+
+# Not finished
+class SelfAttentionXvector(nn.Module):
+    def __init__(self, feat_dim, num_target, num_head, att_node=500):
+        super(SelfAttentionXvector, self).__init__()
+        self.TDNN1 = nn.Conv1d(feat_dim, 512, 5, padding=2, dilation=1)
+        self.TDNN2 = nn.Conv1d(512, 512, 3, padding=2, dilation=2)
+        self.TDNN3 = nn.Conv1d(512, 512, 3, padding=3, dilation=3)
+        self.TDNN4 = nn.Conv1d(512, 512, 1, dilation=1)
+        self.TDNN5 = nn.Conv1d(512, 1500, 1, dilation=1)
+
+        self.attention = SelfAttentionLayer(1500, num_head, att_node)
 
         self.layer1 = nn.Linear(3000, 512)
         self.bnorm1 = nn.BatchNorm1d(512)
