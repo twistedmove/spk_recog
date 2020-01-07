@@ -1,6 +1,6 @@
 #!/bin/bash
 . ./path.sh
-stage=1
+stage=0
 
 if [ $stage -le 0 ]; then
   local/make_swbd_cellular1.py \
@@ -23,7 +23,18 @@ if [ $stage -le 1 ]; then
   export PATH=../../kaldi/tools/sph2pipe_v2.5:$PATH
   dir=~/Workspace/spk_recog/fbank
   mkdir -p $dir/log
-  steps/make_fbank.sh data/swbd_cell $dir/log $dir
+  # steps/make_fbank.sh --nj 10 data/swbd_cell $dir/log $dir
+  local/compute_vad_decision.sh --nj 10 data/swbd_cell $dir/log $dir
 fi
 
+if [ $stage -le 2 ]; then
+  local/prepare_feats_for_egs.sh --nj 40 \
+    data/swbd_cell data/swbd_cell_no_sil ~/Workspace/spk_recog/swbd_cell_no_sil
+  utils/fix_data_dir.sh data/swbd_cell_no_sil
+  if [ ! -e data/swbd_cell_no_sil/.nosil.scp ]; then
+    mv data/swbd_cell_no_sil/feats.scp data/swbd_cell_no_sil/.nosil.scp
+  fi
+  utils/shuffle_list.pl --srand 123 data/swbd_cell_no_sil/.nosil.scp \
+    > data/swbd_cell_no_sil/feats.scp
+fi
 exit 0;

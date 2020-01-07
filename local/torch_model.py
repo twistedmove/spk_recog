@@ -39,7 +39,7 @@ class Xvector(nn.Module):
 
         self.pooling = StatsPooling(2)
 
-        self.layer1 = nn.Linear(1500, 512)
+        self.layer1 = nn.Linear(3000, 512)
         self.bnorm1 = nn.BatchNorm1d(512)
 
         self.layer2 = nn.Linear(512, 512)
