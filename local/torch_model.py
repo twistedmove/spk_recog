@@ -1,13 +1,26 @@
 #!/usr/bin/env python3
 # %%
-import os
+import torch
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
+
+
+class TDNN(nn.Module):
+    def __init__(self, in_dim, out_dim, kennel_size, padding, dilation):
+        super(TDNN, self).__init__()
+        self.layer = nn.Conv1d(in_dim, out_dim, kennel_size,
+                               padding=padding, dilation=dilation)
+        self.bnorm = nn.BatchNorm1d(out_dim)
+
+    def forward(self, x):
+        return self.bnorm(F.relu(self.layer(x)))
+
 
 class StatsPooling(nn.Module):
     def __init__(self, axis):
         super(StatsPooling, self).__init__()
         self.axis = axis
+
     def forward(self, data):
         mean = data.mean(dim=self.axis)
         std = data.pow(2).mean(self.axis).sqrt()
@@ -18,42 +31,30 @@ class StatsPooling(nn.Module):
 class Xvector(nn.Module):
     def __init__(self, feat_dim, num_target):
         super(Xvector, self).__init__()
-        self.feat_dim = feat_dim
-        self.num_target = num_target
-
-        self.layer1 = nn.Conv1d(feat_dim, 512, 5, padding=2, dilation=1)
-        self.bnorm1 = nn.BatchNorm1d(512)
-
-        self.layer2 = nn.Conv1d(512, 512, 3, padding=2, dilation=2)
-        self.bnorm2 = nn.BatchNorm1d(512)
-
-        self.layer3 = nn.Conv1d(512, 512, 3, padding=3, dilation=3)
-        self.bnorm3 = nn.BatchNorm1d(512)
-
-        self.layer4 = nn.Conv1d(512, 512, 1, dilation=1)
-        self.bnorm4 = nn.BatchNorm1d(512)
-
-        self.layer5 = nn.Conv1d(512, 1500, 1, dilation=1)
-        self.bnorm5 = nn.BatchNorm1d(512)
+        self.TDNN1 = nn.Conv1d(feat_dim, 512, 5, padding=2, dilation=1)
+        self.TDNN2 = nn.Conv1d(512, 512, 3, padding=2, dilation=2)
+        self.TDNN3 = nn.Conv1d(512, 512, 3, padding=3, dilation=3)
+        self.TDNN4 = nn.Conv1d(512, 512, 1, dilation=1)
+        self.TDNN5 = nn.Conv1d(512, 1500, 1, dilation=1)
 
         self.pooling = StatsPooling(2)
 
-        self.layer6 = nn.Linear(1500, 512)
-        self.bnorm6 = nn.BatchNorm1d(512)
+        self.layer1 = nn.Linear(1500, 512)
+        self.bnorm1 = nn.BatchNorm1d(512)
 
-        self.layer7 = nn.Linear(512, 512)
-        self.bnorm7 = nn.BatchNorm1d(512)
+        self.layer2 = nn.Linear(512, 512)
+        self.bnorm2 = nn.BatchNorm1d(512)
 
-        self.layer8 = nn.Linear(512, num_target)
+        self.output = nn.Linear(512, num_target)
 
     def forward(self, data):
-        x = self.bnorm1(self.layer1(data).relu)
-        x = self.bnorm2(self.layer2(x).relu)
-        x = self.bnorm3(self.layer3(x).relu)
-        x = self.bnorm4(self.layer4(x).relu)
-        x = self.bnorm5(self.layer5(x).relu)
+        x = self.TDNN1(data)
+        x = self.TDNN2(x)
+        x = self.TDNN3(x)
+        x = self.TDNN4(x)
+        x = self.TDNN5(x)
         x = self.pooling(x)
-        x = self.bnorm6(self.layer6(x).relu)
-        x = self.bnorm7(self.layer7(x).relu)
-        x = self.layer8(x)
+        x = self.bnorm1(F.relu(self.layer1(x)))
+        x = self.bnorm2(F.relu(self.layer2(x)))
+        x = self.output(x)
         return x
