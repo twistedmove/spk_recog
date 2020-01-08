@@ -6,7 +6,7 @@ import random
 import torch
 from torch.utils.data import DataLoader
 from KaldiDataset import ReadMatrix
-from torch_model import Xvector
+import torch_model
 
 random.seed(123)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -18,7 +18,7 @@ def _random_chunk_size(min_size, max_size, num_iter):
 
 
 datadir = 'data/swbd_cell_no_sil'
-mdldir = 'torch_models/'
+mdldir = 'exp/att_models'
 os.makedirs(mdldir, exist_ok=True)
 
 feat_dim = 23
@@ -28,6 +28,7 @@ num_iter = 20
 num_chunk_per_feat = 10
 num_feat_per_step = 5
 batchsize = 8
+num_head = 1
 
 initial_lr = 0.01
 final_lr = 0.001
@@ -38,7 +39,9 @@ max_chunk_size = 400
 
 chunk_list = _random_chunk_size(min_chunk_size, max_chunk_size, num_iter)
 
-model = Xvector(feat_dim, num_targets).to(device=device)
+model = torch_model.SelfAttentionXvector(feat_dim,
+                                         num_targets, num_head).to(device)
+# model = Xvector(feat_dim, num_targets).to(device=device)
 model = torch.nn.DataParallel(model)
 model.train()
 
@@ -62,7 +65,11 @@ for i, chunk_size in enumerate(chunk_list):
         train_x = train_x.transpose(1, 2)
         train_y = data[1].view(-1).to(device)
 
-        logit = model(train_x)
+        logit, A = model(train_x)
+        
+        # penalty = torch.matmul(A.transpose(1, 2), A) - torch.eye(num_head).to(device)
+        # penalty = torch.norm(penalty, dim=(1, 2)).mean()
+
         loss = criterion(logit, train_y)
         pred = logit.max(dim=-1)[1]
         loss.backward()

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # %%
 import torch
 import torch.nn as nn
@@ -28,14 +27,15 @@ class StatsPooling(nn.Module):
         return x
 
 
-class SelfAttentionLayer(nn.Module):
+class SelfAttention(nn.Module):
     def __init__(self, laten_dim, num_head, node):
-        super(SelfAttentionLayer, self).__init__()
+        super(SelfAttention, self).__init__()
         self.W1 = nn.Linear(laten_dim, node)
         self.W2 = nn.Linear(node, num_head)
 
     def forward(self, data):
-        return F.softmax(self.W2(F.relu(self.W1)))
+        # data: (batch, input_dim, frame)
+        return F.softmax(self.W2(F.relu(self.W1(data.transpose(1, 2)))), dim=1)
 
 
 class Xvector(nn.Module):
@@ -80,9 +80,9 @@ class SelfAttentionXvector(nn.Module):
         self.TDNN4 = nn.Conv1d(512, 512, 1, dilation=1)
         self.TDNN5 = nn.Conv1d(512, 1500, 1, dilation=1)
 
-        self.attention = SelfAttentionLayer(1500, num_head, att_node)
+        self.attention = SelfAttention(1500, num_head, att_node)
 
-        self.layer1 = nn.Linear(3000, 512)
+        self.layer1 = nn.Linear(1500, 512)
         self.bnorm1 = nn.BatchNorm1d(512)
 
         self.layer2 = nn.Linear(512, 512)
@@ -96,8 +96,11 @@ class SelfAttentionXvector(nn.Module):
         x = self.TDNN3(x)
         x = self.TDNN4(x)
         x = self.TDNN5(x)
-        x = self.pooling(x)
+        a = self.attention(x)
+
+        x = torch.matmul(x, a).mean(2)
+
         x = self.bnorm1(F.relu(self.layer1(x)))
         x = self.bnorm2(F.relu(self.layer2(x)))
         x = self.output(x)
-        return x
+        return x, a

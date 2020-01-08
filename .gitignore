@@ -1,6 +1,6 @@
 local/__pycache__/
 data/
-torch_models/
+exp/
 
 utils
 steps
